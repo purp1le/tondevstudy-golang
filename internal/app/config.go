@@ -3,6 +3,7 @@ package app
 import (
 	"encoding/json"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/joho/godotenv"
@@ -21,6 +22,7 @@ type appConfig struct {
 	}
 
 	MAINNET_CONFIG *liteclient.GlobalConfig
+	START_BLOCK    uint64
 
 	Wallet struct {
 		SEED []string
@@ -41,6 +43,11 @@ func InitConfig() (err error) {
 	CFG.Postgres.TIMEZONE = os.Getenv("POSTGRES_TIMEZONE")
 
 	CFG.Logger.LOGLVL = os.Getenv("LOGL")
+
+	CFG.START_BLOCK, err = strconv.ParseUint(os.Getenv("START_BLOCK"), 10, 64)
+	if err != nil {
+		return err
+	}
 
 	jsonConfig, err := os.Open("mainnet-config.json")
 	if err == nil {
