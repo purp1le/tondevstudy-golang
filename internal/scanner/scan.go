@@ -209,7 +209,7 @@ func (s *Scanner) processMcBlock(master *ton.BlockIDExt) error {
 
 	dbtx := app.DB.Begin()
 	for _, transaction := range txList {
-		if err := s.processTransaction(dbtx, transaction); err != nil {
+		if err := s.processTransaction(dbtx, transaction, master); err != nil {
 			logrus.Error(err)
 		}
 	}

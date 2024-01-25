@@ -2,7 +2,9 @@ package main
 
 import (
 	"ton-lessons/internal/app"
-	"ton-lessons/internal/storage"
+	scan "ton-lessons/internal/scanner"
+
+	"github.com/sirupsen/logrus"
 )
 
 func main() {
@@ -16,11 +18,13 @@ func run() error {
 		return err
 	}
 
-	app.DB.AutoMigrate(
-		&storage.Block{},
-		&storage.DedustSwap{},
-		&storage.DedustDeposit{},
-		&storage.DedustWithdraw{},
-	)
+	scanner, err := scan.NewScanner()
+	if err != nil {
+		logrus.Error(err)
+		return err
+	}
+
+	scanner.Listen()
+
 	return nil
 }
