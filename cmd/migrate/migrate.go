@@ -18,9 +18,6 @@ func run() error {
 
 	app.DB.AutoMigrate(
 		&storage.Block{},
-		&storage.DedustSwap{},
-		&storage.DedustDeposit{},
-		&storage.DedustWithdraw{},
 	)
 	return nil
 }

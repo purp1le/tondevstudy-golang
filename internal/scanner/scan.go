@@ -71,6 +71,7 @@ func NewScanner() (*Scanner, error) {
 
 func (s *Scanner) Listen() {
 	s.Log.Debug("[SCN] start processing blocks")
+
 	lastMaster, err := s.Api.GetMasterchainInfo(context.Background())
 	for err != nil {
 		lastMaster, err = s.Api.GetMasterchainInfo(context.Background())
@@ -145,6 +146,7 @@ func (s *Scanner) processMcBlock(master *ton.BlockIDExt) error {
 		if err != nil {
 			return err
 		}
+
 		s.shardLastSeqno[getShardID(shard)] = shard.SeqNo
 		newShards = append(newShards, notSeen...)
 	}
@@ -211,6 +213,8 @@ func (s *Scanner) processMcBlock(master *ton.BlockIDExt) error {
 	for _, transaction := range txList {
 		if err := s.processTransaction(dbtx, transaction, master); err != nil {
 			logrus.Error(err)
+			dbtx.Rollback()
+			return err
 		}
 	}
 

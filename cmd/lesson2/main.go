@@ -3,8 +3,6 @@ package main
 import (
 	"ton-lessons/internal/app"
 	scan "ton-lessons/internal/scanner"
-
-	"github.com/sirupsen/logrus"
 )
 
 func main() {
@@ -18,89 +16,93 @@ func run() error {
 		return err
 	}
 
-	scanner, err := scan.NewScanner()
-	if err != nil {
-		logrus.Error(err)
-		return err
-	}
-
-	scanner.Listen()
-
-	// client := liteclient.NewConnectionPool()
-	// if err := client.AddConnectionsFromConfig(context.Background(), app.CFG.MAINNET_CONFIG); err != nil {
+	// liteclient := liteclient.NewConnectionPool()
+	// if err := liteclient.AddConnectionsFromConfig(context.Background(), app.CFG.MAINNET_CONFIG); err != nil {
 	// 	logrus.Error(err)
 	// 	return err
 	// }
 
-	// uuid, err := uuid.NewUUID()
-	// if err != nil {
-	// 	logrus.Error(err)
-	// 	return err
-	// }
-
-	// logrus.Info(uuid)
-	// api := ton.NewAPIClient(client)
+	// api := ton.NewAPIClient(liteclient)
 
 	// seed := app.CFG.Wallet.SEED
-	// logrus.Info(seed)
-
 	// wall, err := wallet.FromSeed(api, seed, wallet.HighloadV2Verified)
 	// if err != nil {
-	// 	logrus.Error(err)
 	// 	return err
 	// }
 
-	// logrus.Info(wall.Address())
+	// uuid := uuid.New()
+	// logrus.Info(uuid.String())
 
 	// lastMaster, err := api.CurrentMasterchainInfo(context.Background())
 	// if err != nil {
-	// 	logrus.Error(err)
 	// 	return err
 	// }
 
-	// accountInfo, err := api.GetAccount(context.Background(), lastMaster, wall.Address())
+	// accountInfo, err := api.GetAccount(
+	// 	context.Background(),
+	// 	lastMaster,
+	// 	wall.Address(),
+	// )
 	// if err != nil {
-	// 	logrus.Error(err)
 	// 	return err
 	// }
 
 	// transactions := make(chan *tlb.Transaction)
-	// go api.SubscribeOnTransactions(context.Background(), wall.Address(), accountInfo.LastTxLT, transactions)
+
+	// go api.SubscribeOnTransactions(
+	// 	context.Background(),
+	// 	wall.Address(),
+	// 	accountInfo.LastTxLT,
+	// 	transactions,
+	// )
+
+	// jettonWalletAddress := "EQCaAgX3aSw3P7ZBklcRvMFlhBcCnF9HPuTOtfL9fZaZe1YL"
+
 	// for {
 	// 	select {
 	// 	case newTransaction := <-transactions:
 	// 		if newTransaction.IO.In.MsgType != tlb.MsgTypeInternal {
+	// 			logrus.Info("not internal message")
 	// 			continue
 	// 		}
 
 	// 		internalMessage := newTransaction.IO.In.AsInternal()
-	// 		logrus.Info("sender address: ", internalMessage.SrcAddr)
-	// 		logrus.Info("receiver address: ", internalMessage.DstAddr)
-	// 		logrus.Info("amount: ", internalMessage.Amount)
-
-	// 		if internalMessage.Body == nil {
+	// 		if internalMessage.SrcAddr.String() != jettonWalletAddress {
 	// 			continue
 	// 		}
 
-	// 		inBody := internalMessage.Body.BeginParse()
-	// 		var (
-	// 			transferNotification structures.TransferNotification
-	// 		)
+	// 		if internalMessage.Body == nil {
+	// 			logrus.Info("internal message body = nil")
+	// 			continue
+	// 		}
+
+	// 		slice := internalMessage.Body.BeginParse()
+
+	// 		var transferNotification structures.JettonNotification
 
 	// 		if err := tlb.LoadFromCell(
 	// 			&transferNotification,
-	// 			inBody,
+	// 			slice,
 	// 			false,
 	// 		); err != nil {
 	// 			logrus.Error(err)
 	// 			continue
 	// 		}
 
-	// 		logrus.Info("queryId: ", transferNotification.QueryId)
-	// 		logrus.Info("jetton amount: ", transferNotification.Amount)
-	// 		logrus.Info("sender address: ", transferNotification.Sender)
+	// 		logrus.Info("found jetton transfer!")
+	// 		logrus.Info("Sender: ", transferNotification.Sender)
+	// 		logrus.Info("Amount: ", transferNotification.Amount.String())
+	// 		logrus.Info("QueryId: ", transferNotification.QueryId)
+
 	// 	}
 	// }
+
+	scanner, err := scan.NewScanner()
+	if err != nil {
+		return err
+	}
+
+	scanner.Listen()
 
 	return nil
 }

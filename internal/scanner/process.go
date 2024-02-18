@@ -1,123 +1,82 @@
 package scan
 
 import (
-	"context"
-	"encoding/base64"
-	"ton-lessons/internal/app"
+	"ton-lessons/internal/structures"
 
 	"github.com/sirupsen/logrus"
 	"github.com/xssnick/tonutils-go/tlb"
 	"gorm.io/gorm"
 )
 
-func (s *Scanner) processTransaction(dbtx *gorm.DB, trans *tlb.Transaction, master *tlb.BlockInfo) error {
-	if trans.IO.Out == nil {
+func (s *Scanner) processTransaction(
+	dbtx *gorm.DB,
+	trans *tlb.Transaction,
+	master *tlb.BlockInfo,
+) error {
+	if trans.IO.In.MsgType != tlb.MsgTypeInternal {
 		return nil
 	}
 
-	messages, err := trans.IO.Out.ToSlice()
-	if err != nil {
+	inTrans := trans.IO.In.AsInternal()
+	if inTrans.Body == nil {
 		return nil
 	}
 
-	for _, msg := range messages {
-		if msg.MsgType != tlb.MsgTypeExternalOut {
-			continue
-		}
+	if err := s.findJettonTransferNotification(inTrans); err != nil {
+		return err
+	}
 
-		msgOut := msg.AsExternalOut()
-
-		accountInfo, err := s.Api.GetAccount(context.Background(), master, msgOut.SrcAddr)
-		if err != nil {
-			return err
-		}
-
-		codeHash := base64.StdEncoding.EncodeToString(accountInfo.Code.Hash())
-		if codeHash != app.DedustPoolCodeHash {
-			logrus.Info("invalid code")
-			continue
-		}
-
-		logrus.Info("[SCN] contract code hash: ", codeHash)
-		logrus.Info("[SCN] init code hash: ", app.DedustPoolCodeHash)
-		if err := s.processDedustSwapEvent(
-			dbtx,
-			msgOut,
-		); err != nil {
-			return err
-		}
-
-		if err := s.processDedustDeposit(
-			dbtx,
-			msgOut,
-		); err != nil {
-			return err
-		}
-
-		if err := s.processDedustWithdraw(
-			dbtx,
-			msgOut,
-		); err != nil {
-			return err
-		}
+	if err := s.findJettonTransferRequest(inTrans); err != nil {
+		return err
 	}
 
 	return nil
 }
 
-// func (s *Scanner) processJettonTransferRequest(
-// 	dbtx *gorm.DB,
-// 	trans *tlb.InternalMessage,
-// ) error {
-// 	var (
-// 		transferRequest structures.TransferRequest
-// 	)
+func (s *Scanner) findJettonTransferRequest(
+	inTrans *tlb.InternalMessage,
+) error {
+	var (
+		jettonTransferRequest structures.JettonTrasfer
+	)
 
-// 	if trans.Body == nil {
-// 		return nil
-// 	}
+	if err := tlb.LoadFromCell(
+		&jettonTransferRequest,
+		inTrans.Body.BeginParse(),
+		false,
+	); err != nil {
+		return nil
+	}
 
-// 	if err := tlb.LoadFromCell(
-// 		&transferRequest,
-// 		trans.Body.BeginParse(),
-// 		false,
-// 	); err != nil {
-// 		return nil
-// 	}
+	logrus.Infof("[SCN] trnsfr rqst from [%s] to [%s] amount [%s]",
+		inTrans.SrcAddr,
+		jettonTransferRequest.Destination,
+		jettonTransferRequest.Amount.String(),
+	)
 
-// 	logrus.Infof("[SCN] New transfer request from [%s] to [%s] amount [%s]",
-// 		trans.SrcAddr.String(),
-// 		transferRequest.Destination,
-// 		transferRequest.Amount,
-// 	)
-// 	return nil
-// }
+	return nil
+}
 
-// func (s *Scanner) processJettonTransferNotifications(
-// 	dbtx *gorm.DB,
-// 	trans *tlb.InternalMessage,
-// ) error {
-// 	var (
-// 		transferNotification structures.TransferNotification
-// 	)
+func (s *Scanner) findJettonTransferNotification(
+	inTrans *tlb.InternalMessage,
+) error {
+	var (
+		jettonTransferNotification structures.JettonNotification
+	)
 
-// 	if trans.Body == nil {
-// 		return nil
-// 	}
+	if err := tlb.LoadFromCell(
+		&jettonTransferNotification,
+		inTrans.Body.BeginParse(),
+		false,
+	); err != nil {
+		return nil
+	}
 
-// 	if err := tlb.LoadFromCell(
-// 		&transferNotification,
-// 		trans.Body.BeginParse(),
-// 		false,
-// 	); err != nil {
-// 		return nil
-// 	}
+	logrus.Infof("[SCN] trnsfr ntfctn from [%s] to [%s] amount [%s]",
+		jettonTransferNotification.Sender,
+		inTrans.DstAddr,
+		jettonTransferNotification.Amount.String(),
+	)
 
-// 	logrus.Infof("[SCN] New transfer notification from [%s] to [%s] amount [%s]",
-// 		transferNotification.Sender,
-// 		trans.DstAddr.String(),
-// 		transferNotification.Amount,
-// 	)
-
-// 	return nil
-// }
+	return nil
+}
