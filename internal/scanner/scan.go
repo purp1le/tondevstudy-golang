@@ -16,6 +16,7 @@ import (
 	"github.com/xssnick/tonutils-go/tlb"
 	"github.com/xssnick/tonutils-go/ton"
 	"gopkg.in/tomb.v1"
+	"gorm.io/gorm"
 )
 
 type Scanner struct {
@@ -161,7 +162,7 @@ func (s *Scanner) processMcBlock(master *ton.BlockIDExt) error {
 
 	// for each shard block getting transactions
 	var wg sync.WaitGroup
-	var tomb tomb.Tomb
+	var tombGetTransaction tomb.Tomb
 	allDone := make(chan struct{})
 	for _, shard := range newShards {
 
@@ -188,7 +189,7 @@ func (s *Scanner) processMcBlock(master *ton.BlockIDExt) error {
 					defer wg.Done()
 					tx, err := s.Api.GetTransaction(context.Background(), shard, address.NewAddress(0, 0, account), lt)
 					if err != nil {
-						tomb.Kill(err)
+						tombGetTransaction.Kill(err)
 					}
 					txList = append(txList, tx)
 				}(shard, id.Account, id.LT)
@@ -203,20 +204,43 @@ func (s *Scanner) processMcBlock(master *ton.BlockIDExt) error {
 
 	select {
 	case <-allDone:
-	case <-tomb.Dying():
-		logrus.Error("[SCN] err when get transactions: ", tomb.Err())
-		return tomb.Err()
+	case <-tombGetTransaction.Dying():
+		logrus.Error("[SCN] err when get transactions: ", tombGetTransaction.Err())
+		return tombGetTransaction.Err()
 	}
-	tomb.Done()
+	tombGetTransaction.Done()
 
 	dbtx := app.DB.Begin()
+
+	var wgTrans sync.WaitGroup
+	allDoneTrans := make(chan struct{})
+	var tombTrans tomb.Tomb
+
 	for _, transaction := range txList {
-		if err := s.processTransaction(dbtx, transaction, master); err != nil {
-			logrus.Error(err)
-			dbtx.Rollback()
-			return err
-		}
+		wgTrans.Add(1)
+		go func(dbtx *gorm.DB, transaction *tlb.Transaction, master *tlb.BlockInfo) {
+			defer wgTrans.Done()
+
+			if err := s.processTransaction(dbtx, transaction, master); err != nil {
+				logrus.Error(err)
+				tombTrans.Kill(err)
+			}
+		}(dbtx, transaction, master)
 	}
+
+	go func() {
+		wgTrans.Wait()
+		close(allDoneTrans)
+	}()
+
+	select {
+	case <-allDoneTrans:
+	case <-tombTrans.Dying():
+		logrus.Error("[SCN] err when get transactions: ", tombTrans.Err())
+		dbtx.Rollback()
+		return tombTrans.Err()
+	}
+	tombTrans.Done()
 
 	if err := s.addBlock(*master, dbtx); err != nil {
 		dbtx.Rollback()

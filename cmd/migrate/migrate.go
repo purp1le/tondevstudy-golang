@@ -18,6 +18,8 @@ func run() error {
 
 	app.DB.AutoMigrate(
 		&storage.Block{},
+		&storage.NftCollection{},
+		&storage.NftItem{},
 	)
 	return nil
 }
