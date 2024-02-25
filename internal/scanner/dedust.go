@@ -8,7 +8,6 @@ import (
 	"ton-lessons/internal/structures"
 
 	"github.com/sirupsen/logrus"
-	"github.com/xssnick/tonutils-go/address"
 	"github.com/xssnick/tonutils-go/tlb"
 )
 
@@ -17,30 +16,19 @@ func (s *Scanner) processDedustSwap(
 	msgOut *tlb.ExternalMessageOut,
 ) error {
 	var (
-		err        error
-		opcode     uint64
-		assetIn    string
-		assetOut   string
-		amountIn   float64
-		amountOut  float64
-		senderAddr string
-		// refAddr    string
-		reserve0 float64
-		reserve1 float64
+		swapEvent structures.DedustSwapEvent
 	)
 
 	if msgOut.Body == nil {
 		return nil
 	}
 
-	bodySl := msgOut.Body.BeginParse()
-
-	opcode, err = bodySl.LoadUInt(32)
-	if err != nil {
-		return nil
-	}
-
-	if opcode != 0x9c610de3 {
+	if err := tlb.LoadFromCell(
+		&swapEvent,
+		msgOut.Body.BeginParse(),
+		false,
+	); err != nil {
+		logrus.Error(err)
 		return nil
 	}
 
@@ -58,103 +46,12 @@ func (s *Scanner) processDedustSwap(
 		return nil
 	}
 
-	assetInType, err := bodySl.LoadUInt(4)
-	if err != nil {
-		return nil
-	}
-
-	if assetInType == 0 {
-		assetIn = "TON"
-	} else {
-		workchain, err := bodySl.LoadUInt(8)
-		if err != nil {
-			return nil
-		}
-
-		addrBytes, err := bodySl.LoadSlice(256)
-		if err != nil {
-			return nil
-		}
-
-		assetIn = address.NewAddress(0, byte(workchain), addrBytes).String()
-	}
-
-	assetOutType, err := bodySl.LoadUInt(4)
-	if err != nil {
-		return nil
-	}
-
-	if assetOutType == 0 {
-		assetOut = "TON"
-	} else {
-		workchain, err := bodySl.LoadUInt(8)
-		if err != nil {
-			return nil
-		}
-
-		addrBytes, err := bodySl.LoadSlice(256)
-		if err != nil {
-			return nil
-		}
-
-		assetOut = address.NewAddress(0, byte(workchain), addrBytes).String()
-	}
-
-	amountOutBig, err := bodySl.LoadBigCoins()
-	if err != nil {
-		return nil
-	}
-
-	amountOut, _ = amountOutBig.Float64()
-	amountOut /= 1e9
-
-	amountInBig, err := bodySl.LoadBigCoins()
-	if err != nil {
-		return nil
-	}
-
-	amountIn, _ = amountInBig.Float64()
-	amountIn /= 1e9
-
-	nextSl, err := bodySl.LoadRef()
-	if err != nil {
-		return nil
-	}
-
-	senderAddrType, err := nextSl.LoadAddr()
-	if err != nil {
-		return nil
-	}
-
-	senderAddr = senderAddrType.String()
-
-	_, err = nextSl.LoadAddr()
-	if err != nil {
-		return nil
-	}
-
-	reserve0Big, err := nextSl.LoadBigCoins()
-	if err != nil {
-		return nil
-	}
-
-	reserve0, _ = reserve0Big.Float64()
-	reserve0 /= 1e9
-
-	reserve1Big, err := nextSl.LoadBigCoins()
-	if err != nil {
-		return nil
-	}
-
-	reserve1, _ = reserve1Big.Float64()
-	reserve1 /= 1e9
-
 	fmt.Println("[SCN] FOUND DEDUST SWAP")
-	fmt.Printf("[SCN] ASSET IN - [%0.2f] [%s]\n", amountIn, assetIn)
-	fmt.Printf("[SCN] ASSET OUT - [%0.2f] [%s]\n", amountOut, assetOut)
-	fmt.Printf("[SCN] SENDER - [%s]\n", senderAddr)
-	fmt.Printf("[SCN] RESERVE 0 - [%0.2f]\n", reserve0)
-	fmt.Printf("[SCN] RESERVE 1 - [%0.2f]\n", reserve1)
+	fmt.Printf("[SCN] ASSET IN - [%s] [%s]\n", swapEvent.AmountIn.TON(), swapEvent.AssetIn.Type())
+	fmt.Printf("[SCN] ASSET OUT - [%s] [%s]\n", swapEvent.AmountOut.TON(), swapEvent.AssetOut.Type())
+	fmt.Printf("[SCN] SENDER - [%s]\n", swapEvent.ExtraInfo.SenderAddr)
+	fmt.Printf("[SCN] RESERVE 0 - [%s]\n", swapEvent.ExtraInfo.Reserve0.TON())
+	fmt.Printf("[SCN] RESERVE 1 - [%s]\n", swapEvent.ExtraInfo.Reserve1.TON())
 
 	return nil
 }

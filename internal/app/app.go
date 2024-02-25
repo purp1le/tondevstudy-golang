@@ -13,5 +13,7 @@ func InitApp() error {
 		return err
 	}
 
+	InitTlb()
+
 	return nil
 }
