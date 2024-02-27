@@ -27,3 +27,12 @@ type StonfiSwapPart2 struct {
 		Token1Address *address.Address `tlb:"addr"`
 	} `tlb:"^"`
 }
+
+type StonfiSwapRequest struct {
+	_            tlb.Magic        `tlb:"#25938561"`
+	TokenWallet1 *address.Address `tlb:"addr"`
+	MinOut       tlb.Coins        `tlb:"."`
+	ToAddress    *address.Address `tlb:"addr"`
+	HasRef       bool             `tlb:"bool"`
+	RefAddress   *address.Address `tlb:"?HasRef addr"`
+}

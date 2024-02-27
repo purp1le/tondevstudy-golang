@@ -81,9 +81,9 @@ type DedustDepositWithdrawal struct {
 }
 
 type DedustSwapStepParams struct {
-	_     tlb.Magic  `tlb:"$0"`
-	Limit tlb.Coins  `tlb:"."`
-	Next  *cell.Cell `tlb:"maybe ^"`
+	_     tlb.Magic       `tlb:"$0"`
+	Limit tlb.Coins       `tlb:"."`
+	Next  *DedustSwapStep `tlb:"maybe ^"`
 }
 
 type DedustSwapStep struct {
@@ -99,10 +99,16 @@ type DedustSwapParams struct {
 	RejectPayload  *cell.Cell       `tlb:"maybe ^"`
 }
 
-type DedustRequestSwap struct {
+type DedustRequestNativeSwap struct {
 	_          tlb.Magic        `tlb:"#ea06185d"`
 	QueryId    uint64           `tlb:"## 64"`
 	Amount     tlb.Coins        `tlb:"."`
+	SwapStep   DedustSwapStep   `tlb:"."`
+	SwapParams DedustSwapParams `tlb:"^"`
+}
+
+type DedustRequestJettonSwap struct {
+	_          tlb.Magic        `tlb:"#e3a0d482"`
 	SwapStep   DedustSwapStep   `tlb:"."`
 	SwapParams DedustSwapParams `tlb:"^"`
 }

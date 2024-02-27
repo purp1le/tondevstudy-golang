@@ -44,7 +44,7 @@ func run() error {
 	// jettonVaultAddr := address.MustParseAddr("EQBeWd2_71HcPmAoTX2i9h0HWehA3_G76lxk90yyXmKXuje7")
 	tonJettonPoolAddr := address.MustParseAddr("EQD0F_w35CTWUxTWRjefoV-400KRA2jX51X4ezIgmUUY_0Qn")
 
-	dedustSwap := structures.DedustRequestSwap{
+	dedustSwap := structures.DedustRequestNativeSwap{
 		QueryId: rand.Uint64(),
 		Amount:  tlb.MustFromTON("1"),
 		SwapStep: structures.DedustSwapStep{
